@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <title>Manajemen Pasien - SinaMedis</title>
+  <style>
+    body { 
+      font-family: Arial, sans-serif;
+      max-width: 960px; 
+      margin: 20px auto; 
+      padding: 0 16px; 
+    }
+    input, select { 
+      padding: 6px 8px; 
+      margin: 4px;
+      border: 1px solid #ccc; 
+      border-radius: 4px; 
+    }
+    button { 
+      padding: 6px 12px; 
+      margin: 4px; 
+      cursor: pointer;
+      border-radius: 4px; 
+      border: none; 
+    }
+    .btn-simpan { 
+      background: #2563eb; 
+      color: white;
+    }
+    .btn-hapus { 
+      background: #dc2626; 
+      color: white; 
+    }
+    .btn-edit { 
+      background: #d97706; 
+      color: white;
+    }
+    ul { 
+      list-style: none; 
+      padding: 0; 
+    }
+    li { 
+      border: 1px solid #e5e7eb;
+      padding: 10px; 
+      margin: 6px 0; 
+      border-radius: 6px; 
+    }
+  </style>
+</head>
+<body>
+
+  <h1>Manajemen Pasien - SinaMedis</h1>
+  
+  <div>
+    <input type="text" id="nik" placeholder="NIK">
+    <input type="text" id="nama" placeholder="Nama Pasien">
+    <input type="text" id="keluhan" placeholder="Keluhan">
+    <input type="datetime-local" id="tanggalMasuk">
+    
+    <select id="jenisPembayaran">
+      <option value="">-- Jenis Pembayaran --</option>
+      <option value="BPJS">BPJS</option>
+      <option value="Mandiri">Mandiri</option>
+      <option value="Asuransi Swasta">Asuransi Swasta</option>
+    </select>
+    
+    <select id="statusAntrean">
+      <option value="Menunggu">Menunggu</option>
+      <option value="Diperiksa">Diperiksa</option>
+      <option value="Selesai">Selesai</option>
+    </select>
+    
+    <input type="number" id="biayaPengobatan" placeholder="Biaya Pengobatan">
+    <select id="dokterPemeriksa"></select>
+    
+    <button class="btn-simpan" onclick="simpanPasien()">Simpan</button>
+  </div>
+  
+  <hr>
+  <ul id="pasienList"></ul>
+
+  <script>
+    const apiURL = 'http://localhost:3000/api/pasien';
+    const dokterURL = 'http://localhost:3000/api/dokter';
+    let idEdit = null;
+
+    // Fungsi memuat data dokter ke dalam dropdown option
+    async function loadDokter() { 
+      const res = await fetch(dokterURL);
+      const data = await res.json(); 
+      const sel = document.getElementById('dokterPemeriksa'); 
+      sel.innerHTML = '<option value="">-- Pilih Dokter --</option>';
+      
+      data.forEach(d => { 
+        sel.innerHTML += `<option value="${d._id}">${d.nama} (${d.spesialisasi})</option>`; 
+      }); 
+    }
+
+    // Fungsi memuat data pasien dan merendernya ke list HTML
+    async function loadPasien() { 
+      const res = await fetch(apiURL);
+      const data = await res.json(); 
+      const list = document.getElementById('pasienList'); 
+      list.innerHTML = '';
+      
+      data.forEach(p => { 
+        const li = document.createElement('li'); 
+        const tgl = new Date(p.tanggalMasuk).toLocaleDateString('id-ID'); 
+        const dokter = p.dokterPemeriksa?.nama || '-'; 
+        
+        li.innerHTML = `
+          <strong>${p.nama}</strong> | NIK: ${p.nik} | ${p.jenisPembayaran}<br>
+          Keluhan: ${p.keluhan}<br>
+          Masuk: ${tgl} | Status: ${p.statusAntrean} | Biaya: Rp${p.biayaPengobatan.toLocaleString('id-ID')}<br>
+          Dokter: ${dokter} 
+          <button class="btn-edit" onclick='editPasien(${JSON.stringify(p)})'>Edit</button> 
+          <button class="btn-hapus" onclick="hapusPasien('${p._id}')">Hapus</button>
+        `; 
+        list.appendChild(li); 
+      }); 
+    }
+
+    // Fungsi untuk menambah (POST) atau memperbarui (PUT) data pasien
+    async function simpanPasien() { 
+      const body = { 
+        nik: document.getElementById('nik').value, 
+        nama: document.getElementById('nama').value, 
+        keluhan: document.getElementById('keluhan').value, 
+        tanggalMasuk: document.getElementById('tanggalMasuk').value || new Date().toISOString(), 
+        jenisPembayaran: document.getElementById('jenisPembayaran').value, 
+        statusAntrean: document.getElementById('statusAntrean').value, 
+        biayaPengobatan: Number(document.getElementById('biayaPengobatan').value), 
+        dokterPemeriksa: document.getElementById('dokterPemeriksa').value 
+      }; 
+      
+      const method = idEdit ? 'PUT' : 'POST';
+      const url = idEdit ? `${apiURL}/${idEdit}` : apiURL; 
+      
+      await fetch(url, { 
+        method, 
+        headers: { 'Content-Type': 'application/json' }, 
+        body: JSON.stringify(body) 
+      });
+      
+      idEdit = null; 
+      resetForm(); 
+      loadPasien(); 
+    }
+
+    // Fungsi untuk memetakan data pasien terpilih ke form input saat tombol Edit ditekan
+    function editPasien(p) { 
+      idEdit = p._id; 
+      document.getElementById('nik').value = p.nik;
+      document.getElementById('nama').value = p.nama; 
+      document.getElementById('keluhan').value = p.keluhan; 
+      document.getElementById('jenisPembayaran').value = p.jenisPembayaran; 
+      document.getElementById('statusAntrean').value = p.statusAntrean; 
+      document.getElementById('biayaPengobatan').value = p.biayaPengobatan; 
+      
+      const dokId = p.dokterPemeriksa?._id || p.dokterPemeriksa; 
+      if (dokId) document.getElementById('dokterPemeriksa').value = dokId; 
+    }
+
+    // Fungsi menghapus data pasien berdasarkan ID
+    async function hapusPasien(id) { 
+      if (!confirm('Yakin hapus pasien ini?')) return;
+      await fetch(`${apiURL}/${id}`, { method: 'DELETE' }); 
+      loadPasien(); 
+    }
+
+    // Fungsi membersihkan kolom input form setelah disubmit atau direset
+    function resetForm() { 
+      ['nik','nama','keluhan','biayaPengobatan'].forEach(id => document.getElementById(id).value = '');
+      document.getElementById('jenisPembayaran').value = ''; 
+      document.getElementById('statusAntrean').value = 'Menunggu'; 
+      document.getElementById('tanggalMasuk').value = ''; 
+    }
+
+    // Inisialisasi awal saat halaman dibuka
+    loadDokter();
+    loadPasien();
+  </script>
+</body>
+</html>
