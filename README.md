@@ -1,5 +1,5 @@
 # TUGAS-BESAR-BASIS-DATA-II
-# SinaMedis — Clinic Management Information System
+# SinaMedis: Clinic Management Information System
 
 Aplikasi CRUD berbasis web untuk manajemen klinik medis, dibangun dengan arsitektur RESTful API menggunakan Node.js dan MongoDB sebagai basis data NoSQL.
 
